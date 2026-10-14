@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DutchAuction on Base</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.5/dist/ethers.umd.min.js"></script>
+  <style>
+    :root { color-scheme: dark; font: 16px system-ui, sans-serif; }
+    body { max-width: 760px; margin: 2rem auto; padding: 0 1rem; background: #111; color: #eee; }
+    h1 { margin-bottom: .25rem; }
+    .muted { color: #aaa; }
+    .warning { padding: 1rem; border: 1px solid #a66d00; background: #332400; border-radius: 8px; }
+    form { display: grid; gap: .75rem; margin-top: 1rem; }
+    label { display: grid; gap: .3rem; }
+    input { padding: .65rem; color: inherit; background: #222; border: 1px solid #555; border-radius: 5px; }
+    button { width: fit-content; padding: .7rem 1rem; cursor: pointer; }
+    pre { white-space: pre-wrap; overflow-wrap: anywhere; padding: 1rem; background: #1c1c1c; border-radius: 8px; }
+    .row { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; }
+  </style>
+</head>
+<body>
+  <h1>DutchAuction test UI</h1>
+  <p class="muted">Base mainnet, chain ID 8453</p>
+
+  <div class="warning">
+    Enter the deployed <code>TestAuctionVault</code> address below. Your MetaMask
+    address controls that vault; the vault owns the tokens and registers the order.
+  </div>
+
+  <p>
+    Handler:
+    <a id="handlerLink" target="_blank" rel="noreferrer"></a>
+  </p>
+  <p>
+    ComposableCoW:
+    <a id="composableLink" target="_blank" rel="noreferrer"></a>
+  </p>
+
+  <div class="row">
+    <button id="connect">Connect MetaMask</button>
+    <span id="account" class="muted"></span>
+  </div>
+
+  <form id="auctionForm">
+    <label>Vault contract address (contract that owns the tokens)
+      <input id="owner" required placeholder="0x...">
+    </label>
+    <label>Sell token address
+      <input id="sellToken" required placeholder="0x...">
+    </label>
+    <label>Buy token address
+      <input id="buyToken" required placeholder="0x...">
+    </label>
+    <label>Sell amount (human units)
+      <input id="sellAmount" required placeholder="1.0">
+    </label>
+    <label>Maximum buy amount (human units)
+      <input id="maxAmount" required placeholder="100.0">
+    </label>
+    <label>Auction start delay (Base blocks)
+      <input id="startDelay" type="number" min="0" value="2" required>
+    </label>
+    <label>Auction duration (Base blocks)
+      <input id="validFor" type="number" min="1" value="100" required>
+    </label>
+    <label>Slippage (basis points; 100 = 1%)
+      <input id="slippageBps" type="number" min="0" max="10000" value="100" required>
+    </label>
+    <button type="submit">Build Safe transaction calldata</button>
+  </form>
+
+  <h2>Output</h2>
+  <pre id="output">Connect MetaMask, fill in the fields, and build the calldata.</pre>
+
+  <script>
+    const { ethers } = window;
+    const CHAIN_ID = 8453n;
+    const HANDLER = "0xEA0dF15691b8bF7A9FBf304Fc1A21193a5C5b11a";
+    const COMPOSABLE_COW = "0xfdaFc9d1902f4e0b84f65F49f244b32b31013b74";
+    const COW_VAULT_RELAYER = "0xC92E8bdf79f0507f65a392b0ab4667716BFE0110";
+    const vaultAbi = [
+      "function approveCow(address token,uint256 amount)",
+      "function createOrder(address handler,bytes32 salt,bytes staticInput)"
+    ];
+    const erc20Abi = [
+      "function decimals() view returns (uint8)",
+      "function approve(address spender,uint256 amount)"
+    ];
+
+    const $ = id => document.getElementById(id);
+    $("handlerLink").textContent = HANDLER;
+    $("handlerLink").href = `https://basescan.org/address/${HANDLER}`;
+    $("composableLink").textContent = COMPOSABLE_COW;
+    $("composableLink").href = `https://basescan.org/address/${COMPOSABLE_COW}`;
+
+    let provider;
+    let signer;
+
+    $("connect").onclick = async () => {
+      if (!window.ethereum) throw new Error("MetaMask was not found.");
+      provider = new ethers.BrowserProvider(window.ethereum);
+      const network = await provider.getNetwork();
+      if (network.chainId !== CHAIN_ID) {
+        throw new Error("Switch MetaMask to Base mainnet (chain ID 8453).");
+      }
+      signer = await provider.getSigner();
+      $("account").textContent = await signer.getAddress();
+    };
+
+    $("auctionForm").onsubmit = async event => {
+      event.preventDefault();
+      try {
+        if (!provider || !signer) throw new Error("Connect MetaMask first.");
+        const network = await provider.getNetwork();
+        if (network.chainId !== CHAIN_ID) {
+          throw new Error("Switch MetaMask to Base mainnet (chain ID 8453).");
+        }
+
+        const owner = ethers.getAddress($("owner").value.trim());
+        const sellToken = ethers.getAddress($("sellToken").value.trim());
+        const buyToken = ethers.getAddress($("buyToken").value.trim());
+        const ownerCode = await provider.getCode(owner);
+        if (ownerCode === "0x") {
+          throw new Error("Safe address must be a deployed Safe contract, not a MetaMask EOA.");
+        }
+        const sellContract = new ethers.Contract(sellToken, erc20Abi, provider);
+        const buyContract = new ethers.Contract(buyToken, erc20Abi, provider);
+        const [sellDecimals, buyDecimals, block] = await Promise.all([
+          sellContract.decimals(), buyContract.decimals(), provider.getBlockNumber()
+        ]);
+
+        const validFor = BigInt($("validFor").value);
+        const slippageBps = BigInt($("slippageBps").value);
+        if (validFor < 1n || slippageBps > 10000n) {
+          throw new Error("Duration must be positive and slippage must be <= 10000 bps.");
+        }
+
+        const startBlock = BigInt(block) + BigInt($("startDelay").value);
+        const staticInput = ethers.AbiCoder.defaultAbiCoder().encode(
+          ["tuple(address sellToken,address buyToken,uint256 sellAmount,uint256 maxAmount,address receiver,uint256 startBlock,uint32 validFor,uint32 slippageBps)"],
+          [[
+            sellToken, buyToken,
+            ethers.parseUnits($("sellAmount").value, sellDecimals),
+            ethers.parseUnits($("maxAmount").value, buyDecimals),
+            owner, startBlock, validFor, slippageBps
+          ]]
+        );
+
+        const salt = ethers.hexlify(ethers.randomBytes(32));
+        const params = { handler: HANDLER, salt, staticInput };
+        const vaultInterface = new ethers.Interface(vaultAbi);
+        const createData = vaultInterface.encodeFunctionData(
+          "createOrder", [HANDLER, salt, staticInput]
+        );
+        const approveData = vaultInterface.encodeFunctionData(
+          "approveCow", [sellToken, ethers.MaxUint256]
+        );
+
+        $("output").textContent = JSON.stringify({
+          network: "Base mainnet (8453)",
+          owner,
+          handler: HANDLER,
+          composableCow: COMPOSABLE_COW,
+          cowVaultRelayer: COW_VAULT_RELAYER,
+          currentBlock: block,
+          startBlock: startBlock.toString(),
+          salt,
+          staticInput,
+          vaultCreateOrderTransaction: {
+            to: owner,
+            value: "0",
+            data: createData
+          },
+          vaultApproveCowTransaction: {
+            to: owner,
+            value: "0",
+            data: approveData
+          },
+          nextStep: "Submit both transactions from the vault controller, then give CoW's watchtower time to discover the registered order."
+        }, null, 2);
+      } catch (error) {
+        $("output").textContent = error.shortMessage || error.message || String(error);
+      }
+    };
+  </script>
+</body>
+</html>

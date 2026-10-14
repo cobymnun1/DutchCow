@@ -1,0 +1,27 @@
+# Foundry build artifacts
+cache/
+out/
+broadcast/
+
+# Local tooling
+.logs/
+.ignore/
+.vscode/
+.idea/
+node_modules/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.seed
+*.mnemonic
+*mnemonic*
+*seed*
+*.secret
+
+# OS files
+.DS_Store
+Thumbs.db
