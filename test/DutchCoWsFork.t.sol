@@ -5,7 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {IERC20} from "cowprotocol/contracts/interfaces/IERC20.sol";
 import {GPv2Order} from "cowprotocol/contracts/libraries/GPv2Order.sol";
 import {IConditionalOrder} from "composable-cow/src/interfaces/IConditionalOrder.sol";
-import {DutchAuction} from "../DutchCoWs.sol";
+import {DutchAuction} from "../src/DutchCoWs.sol";
 import {TestAuctionVault} from "../src/TestAuctionVault.sol";
 
 interface IComposableCoWFork {

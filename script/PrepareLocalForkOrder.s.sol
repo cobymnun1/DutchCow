@@ -4,7 +4,7 @@ pragma solidity >=0.8.0 <0.9.0;
 import {Script} from "forge-std/Script.sol";
 import {IERC20} from "cowprotocol/contracts/interfaces/IERC20.sol";
 import {IConditionalOrder} from "composable-cow/src/interfaces/IConditionalOrder.sol";
-import {DutchAuction} from "../DutchCoWs.sol";
+import {DutchAuction} from "../src/DutchCoWs.sol";
 import {TestAuctionVault} from "../src/TestAuctionVault.sol";
 
 contract PrepareLocalForkOrder is Script {

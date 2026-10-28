@@ -6,7 +6,7 @@ import {IERC20} from "cowprotocol/contracts/interfaces/IERC20.sol";
 import {GPv2Order} from "cowprotocol/contracts/libraries/GPv2Order.sol";
 import {IConditionalOrder, IConditionalOrderGenerator} from "composable-cow/src/interfaces/IConditionalOrder.sol";
 import {IERC165} from "@openzeppelin/utils/introspection/IERC165.sol";
-import {DutchAuction} from "../DutchCoWs.sol";
+import {DutchAuction} from "../src/DutchCoWs.sol";
 
 contract DutchCoWsTest is Test {
     DutchAuction internal handler;
