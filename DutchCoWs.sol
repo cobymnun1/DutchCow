@@ -13,17 +13,19 @@ import {IERC165} from "@openzeppelin/utils/introspection/IERC165.sol";
 // A 0.1% by volume fee is taken on each auction from CoW returned surplus value, integrated as a CoW partner fee. 
 // This software comes with no warranty.
 
+struct Data {
+    IERC20 sellToken;
+    IERC20 buyToken;
+    uint256 sellAmount;
+    uint256 maxAmount;
+    address receiver;
+    uint256 startBlock;
+    uint32 validFor;
+    uint32 slippageBps;
+}
+
 contract DutchAuction is IConditionalOrderGenerator {
-    struct Data {
-        IERC20 sellToken;
-        IERC20 buyToken;
-        uint256 sellAmount;
-        uint256 maxAmount;
-        address receiver;
-        uint256 startBlock;
-        uint32 validFor;
-        uint32 slippageBps;
-    }
+
     
     function supportsInterface(bytes4 id) external pure override returns (bool) {
         return id == type(IConditionalOrderGenerator).interfaceId
@@ -47,6 +49,7 @@ contract DutchAuction is IConditionalOrderGenerator {
     ) external view override {
         Data memory d = abi.decode(staticInput, (Data));
 
+        require(d.validFor > 0, "AuctionTooShort");  
         require(d.slippageBps <= 10_000, "BadSlippage");
         require(GPv2Order.hash(order, domainSeparator) == _hash, "BadHash");
         require(block.number >= d.startBlock && block.number < d.startBlock + d.validFor, "OutsideWindow");
@@ -67,7 +70,6 @@ contract DutchAuction is IConditionalOrderGenerator {
 
         require(order.buyAmount >= _floor(d), "BelowFloor");
     } 
-
 
     bytes32 public constant APP_DATA = 0x09eed5e4a791d7763f86d80bace7aac36a981efa30a39e45b9f65adf28d8b932;
 

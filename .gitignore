@@ -10,6 +10,20 @@ broadcast/
 .idea/
 node_modules/
 
+# Local fork/watch-tower runtime state
+local/config.json
+local/orders.jsonl
+local/anvil.log
+local/watchtower.log
+local/mock-orderbook.log
+local/database/
+local/watchtower-database/
+
+# Local-only files kept out of git (root paths; see note on tracked files)
+/Aunctioneer-old.sol
+/t Dutch auction verification tests"
+/src/TestAuctionVault.sol
+
 # Environment and secrets
 .env
 .env.*
