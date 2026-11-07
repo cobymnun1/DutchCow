@@ -4,7 +4,7 @@
       "name": "base",
       "rpc": "http://127.0.0.1:8545",
       "deploymentBlock": 0,
-      "orderBookApi": "http://127.0.0.1:3000/api/v1",
+      "orderBookApi": "http://127.0.0.1:3001/api/v1",
       "pageSize": 0,
       "filterPolicy": {
         "defaultAction": "ACCEPT"

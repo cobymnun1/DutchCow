@@ -12,6 +12,7 @@ node_modules/
 
 # Local fork/watch-tower runtime state
 local/config.json
+local/fork-addresses.env
 local/orders.jsonl
 local/anvil.log
 local/watchtower.log

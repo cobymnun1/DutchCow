@@ -40,25 +40,27 @@ contract DutchCowEscrow is Initializable, ReentrancyGuard, ERC1271Forwarder {
         require (keccak256(Clones.fetchCloneArgs(address(this))) == keccak256(abi.encode(params)), "Param Mismatch");
     }
 
-    function _takeFunds(Data calldata params, address owner) internal {
+    function _takeFunds(Data calldata params) internal {
         IERC20OZ token = IERC20OZ(address(params.sellToken));
-        token.safeTransferFrom(address(owner), address(this), params.sellAmount);
+        uint256 approvalAmnt = token.allowance(params.receiver, address(this));
+        require(approvalAmnt >= params.sellAmount && approvalAmnt < 2 * params.sellAmount && params.sellAmount <= type(uint256).max / 2, "BadApproval");
+        token.safeTransferFrom(address(params.receiver), address(this), approvalAmnt);
+        require(token.balanceOf(address(this)) >= params.sellAmount, "ShortAfterFee");
         token.forceApprove(vaultRelayer, params.sellAmount);
     }
 
-    function _setOwner(address owner) internal {
-        _owner = owner;
+    function _setOwner(Data calldata params) internal {
+        _owner = params.receiver;
     }
 
     function initialize(
-        Data calldata params, 
-        address owner, 
+        Data calldata params,  
         address handler,
         bytes32 salt) external initializer onlyAuctioneer() returns(bytes32) 
         {
             _verifyParams(params);
-            _takeFunds(params, owner);
-            _setOwner(owner);
+            _takeFunds(params);
+            _setOwner(params);
             
             IConditionalOrder.ConditionalOrderParams memory CowParams = IConditionalOrder.ConditionalOrderParams({
                 handler: IConditionalOrder(handler),
@@ -73,13 +75,24 @@ contract DutchCowEscrow is Initializable, ReentrancyGuard, ERC1271Forwarder {
 
     function releaseFunds() external nonReentrant {
         Data memory params = abi.decode(Clones.fetchCloneArgs(address(this)), (Data)); 
-        require(block.number > (params.startBlock + params.validFor), "Auction not ended");
+        require(block.number > (params.startBlock + params.validFor), "AuctionInProgress");
         IERC20OZ token = IERC20OZ(address(params.sellToken));
-        uint256 refundFee = (token.balanceOf(address(this)) * 10 ) / 10_000;
-        
+        uint256 balance = token.balanceOf(address(this));
+
         composableCoW.remove(CowOrder);
-        token.forceApprove(vaultRelayer, 0);
-        IERC20OZ(address(token)).safeTransfer(_owner, token.balanceOf(address(this)) - refundFee);
-        IERC20OZ(address(token)).safeTransfer(msg.sender, refundFee);
+        try this.pay(address(token), _owner, msg.sender, balance) {} catch {}
+    }
+
+    /// @dev Token calls live here so a blacklist or pause cannot undo `remove`.
+    function pay(address token, address owner, address tipTo, uint256 balance) external {
+        require(msg.sender == address(this), "NotSelf");
+        IERC20OZ(token).forceApprove(vaultRelayer, 0);
+        uint256 refundFee = balance / 1000;
+        if (refundFee == 0) {
+            IERC20OZ(token).safeTransfer(owner, balance);
+        } else {
+            IERC20OZ(token).safeTransfer(owner, balance - refundFee);
+            IERC20OZ(token).safeTransfer(tipTo, refundFee);
+        }
     }
 }
