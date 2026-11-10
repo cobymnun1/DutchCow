@@ -8,7 +8,6 @@ import {Clones} from "@openzeppelin/proxy/Clones.sol";
 import {ReentrancyGuard} from "@openzeppelin/utils/ReentrancyGuard.sol";
 import {DutchCowEscrow} from "./escrow.sol";
 
-// TEST DEPLOYMENT 
 // Author: @cobymnun on x, inspired by @kayibal's original Dutch CoWs.
 // This software comes with no warranty.
 

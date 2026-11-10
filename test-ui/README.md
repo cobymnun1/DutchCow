@@ -1,20 +1,13 @@
-# DutchAuction test UI
+# Real auction page
 
-This static page targets Base mainnet and uses the deployed contracts:
-
-- Handler: `0xEA0dF15691b8bF7A9FBf304Fc1A21193a5C5b11a`
-- ComposableCoW: `0xfdaFc9d1902f4e0b84f65F49f244b32b31013b74`
-
-Run it locally:
+Base mainnet. The page calls the deployed `RealDutchCowTest` contract, which predicts the escrow, approves it, and calls `placeOrder` on the deployed auctioneer.
 
 ```bash
-python3 -m http.server 8080 --directory test-ui
+python3 -m http.server 4174 --bind 127.0.0.1 --directory test-ui
 ```
 
-Open <http://127.0.0.1:8080>.
+Open <http://127.0.0.1:4174> in Chrome. Connect MetaMask on Base.
 
-Deploy `TestAuctionVault` first. The page then encodes the handler's
-`staticInput`, the vault's `createOrder` transaction, and its `approveCow`
-transaction. Submit both from the vault controller EOA. The vault owns the
-tokens and authorizes the order; it approves CoW's Base vault relayer, not
-ComposableCoW.
+The default sells the USDC amount in the form for WETH. CoinGecko supplies both token prices. The auction starts at that mid and decays 5% over 1000 blocks, so the floor asks for less WETH than the USDC is worth. Change the USDC amount and the quote updates. Edit the other fields to leave the default.
+
+Sell tokens are transferred to `RealDutchCowTest` before `place`. Buy tokens are paid to that contract. It has no withdraw.

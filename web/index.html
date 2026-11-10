@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Deploy Dutch Cow on Base</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.5/dist/ethers.umd.min.js"></script>
+  <script src="./bytecode.js"></script>
+  <style>
+    :root { color-scheme: dark; font: 16px/1.45 system-ui, sans-serif; }
+    body { max-width: 720px; margin: 2.5rem auto; padding: 0 1rem 3rem; background: #101010; color: #eee; }
+    h1 { font-size: 1.45rem; margin: 0 0 .35rem; }
+    p { margin: .4rem 0; }
+    .muted { color: #aaa; }
+    button { padding: .7rem 1rem; border-radius: 6px; border: 1px solid #666; background: #1d1d1d; color: inherit; cursor: pointer; }
+    button:disabled { opacity: .45; cursor: default; }
+    button.primary { background: #e8e8e8; color: #111; border-color: #e8e8e8; }
+    .row { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; margin: 1.25rem 0; }
+    pre { white-space: pre-wrap; overflow-wrap: anywhere; padding: 1rem; background: #1a1a1a; border-radius: 8px; min-height: 7rem; }
+    a { color: #9ecbff; }
+    code { font-family: ui-monospace, monospace; }
+  </style>
+</head>
+<body>
+  <h1>Deploy Dutch Cow</h1>
+  <p class="muted">Base mainnet. MetaMask sends two transactions: the handler, then the auctioneer. ComposableCoW and settlement stay the contracts already on Base.</p>
+  <p class="muted">ComposableCoW <code id="cow"></code><br>Settlement <code id="settlement"></code></p>
+
+  <div class="row">
+    <button id="connect" type="button">Connect MetaMask</button>
+    <button id="deploy" class="primary" type="button" disabled>Deploy handler and auctioneer</button>
+    <button id="deployPlacer" type="button" disabled>Deploy RealDutchCowTest</button>
+    <span id="account" class="muted"></span>
+  </div>
+
+  <pre id="log">Open this page in Chrome, then connect the wallet you want to deploy from.</pre>
+
+  <script>
+    const { ethers } = window;
+    const CHAIN_ID = 8453n;
+    const COMPOSABLE_COW = "0xfdaFc9d1902f4e0b84f65F49f244b32b31013b74";
+    const SETTLEMENT = "0x9008D19f58AAbD9eD0D60971565AA8510560ab41";
+    const AUCTIONEER = "0xE105d00b8E13Cb7f33Ea22cA2c2320f40A0E2c63";
+    const HANDLER_ABI = ["constructor()"];
+    const AUCTIONEER_ABI = [
+      "constructor(address _handler, address _cow, address _settlement)",
+      "function handler() view returns (address)",
+      "function composableCow() view returns (address)",
+      "function settlement() view returns (address)",
+      "function vaultRelayer() view returns (address)",
+      "function implementation() view returns (address)"
+    ];
+    const PLACER_ABI = [
+      "constructor(address auctioneer_)",
+      "function auctioneer() view returns (address)"
+    ];
+
+    const logEl = document.querySelector("#log");
+    const accountEl = document.querySelector("#account");
+    const connectBtn = document.querySelector("#connect");
+    const deployBtn = document.querySelector("#deploy");
+    const placerBtn = document.querySelector("#deployPlacer");
+    let signer;
+
+    document.querySelector("#cow").textContent = COMPOSABLE_COW;
+    document.querySelector("#settlement").textContent = SETTLEMENT;
+
+    function log(line) {
+      if (logEl.textContent.startsWith("Open this page")) logEl.textContent = "";
+      logEl.textContent += (logEl.textContent ? "\n" : "") + line;
+    }
+
+    function link(address) {
+      return "https://basescan.org/address/" + address;
+    }
+
+    function txLink(hash) {
+      return "https://basescan.org/tx/" + hash;
+    }
+
+    async function requireBase() {
+      const chainId = await window.ethereum.request({ method: "eth_chainId" });
+      if (BigInt(chainId) === CHAIN_ID) return;
+      try {
+        await window.ethereum.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: "0x2105" }]
+        });
+      } catch (err) {
+        if (err.code !== 4902) throw err;
+        await window.ethereum.request({
+          method: "wallet_addEthereumChain",
+          params: [{
+            chainId: "0x2105",
+            chainName: "Base",
+            nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+            rpcUrls: ["https://mainnet.base.org"],
+            blockExplorerUrls: ["https://basescan.org"]
+          }]
+        });
+      }
+    }
+
+    async function connect() {
+      if (!window.ethereum) {
+        log("MetaMask is not available in this browser. Open the page in Chrome with the extension enabled.");
+        return;
+      }
+      await window.ethereum.request({ method: "eth_requestAccounts" });
+      await requireBase();
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      signer = await provider.getSigner();
+      const network = await provider.getNetwork();
+      if (network.chainId !== CHAIN_ID) throw new Error("MetaMask is not on Base (8453).");
+      const address = await signer.getAddress();
+      accountEl.textContent = address + " · Base";
+      deployBtn.disabled = false;
+      placerBtn.disabled = false;
+      log("Connected " + address + " on Base.");
+    }
+
+    async function deploy() {
+      const code = window.DUTCH_COW_BYTECODE;
+      if (!signer || !code) throw new Error("Connect MetaMask first.");
+      deployBtn.disabled = true;
+      placerBtn.disabled = true;
+      connectBtn.disabled = true;
+      try {
+        await requireBase();
+        log("Deploying DutchAuction handler… confirm in MetaMask.");
+        const handlerFactory = new ethers.ContractFactory(HANDLER_ABI, code.handler, signer);
+        const handler = await handlerFactory.deploy();
+        log("Handler tx " + txLink(handler.deploymentTransaction().hash));
+        await handler.waitForDeployment();
+        const handlerAddress = await handler.getAddress();
+        log("Handler " + link(handlerAddress));
+
+        log("Deploying DutchCoWAuctioneer… confirm the second transaction.");
+        const auctioneerFactory = new ethers.ContractFactory(AUCTIONEER_ABI, code.auctioneer, signer);
+        const auctioneer = await auctioneerFactory.deploy(handlerAddress, COMPOSABLE_COW, SETTLEMENT);
+        log("Auctioneer tx " + txLink(auctioneer.deploymentTransaction().hash));
+        await auctioneer.waitForDeployment();
+        const auctioneerAddress = await auctioneer.getAddress();
+
+        const deployed = {
+          handler: await auctioneer.handler(),
+          composableCow: await auctioneer.composableCow(),
+          settlement: await auctioneer.settlement(),
+          vaultRelayer: await auctioneer.vaultRelayer(),
+          implementation: await auctioneer.implementation()
+        };
+        if (deployed.handler.toLowerCase() !== handlerAddress.toLowerCase()) {
+          throw new Error("Auctioneer handler does not match the contract just deployed.");
+        }
+        if (deployed.composableCow.toLowerCase() !== COMPOSABLE_COW.toLowerCase()) {
+          throw new Error("Auctioneer is not bound to Base ComposableCoW.");
+        }
+        if (deployed.settlement.toLowerCase() !== SETTLEMENT.toLowerCase()) {
+          throw new Error("Auctioneer is not bound to Base settlement.");
+        }
+        log("Auctioneer " + link(auctioneerAddress));
+        log("Escrow implementation " + link(deployed.implementation));
+        log("Vault relayer " + deployed.vaultRelayer);
+        log("Deployment finished.");
+        localStorage.setItem("dutchcow-base-deployment", JSON.stringify({
+          handler: handlerAddress,
+          auctioneer: auctioneerAddress,
+          implementation: deployed.implementation,
+          vaultRelayer: deployed.vaultRelayer
+        }));
+      } finally {
+        connectBtn.disabled = false;
+        deployBtn.disabled = signer == null;
+        placerBtn.disabled = signer == null;
+      }
+    }
+
+    async function deployPlacer() {
+      const code = window.DUTCH_COW_BYTECODE;
+      if (!signer || !code || !code.placer) throw new Error("Connect MetaMask first.");
+      deployBtn.disabled = true;
+      placerBtn.disabled = true;
+      connectBtn.disabled = true;
+      try {
+        await requireBase();
+        log("Deploying RealDutchCowTest against auctioneer " + AUCTIONEER + "… confirm in MetaMask.");
+        const factory = new ethers.ContractFactory(PLACER_ABI, code.placer, signer);
+        const placer = await factory.deploy(AUCTIONEER);
+        log("RealDutchCowTest tx " + txLink(placer.deploymentTransaction().hash));
+        await placer.waitForDeployment();
+        const placerAddress = await placer.getAddress();
+        const bound = await placer.auctioneer();
+        if (bound.toLowerCase() !== AUCTIONEER.toLowerCase()) {
+          throw new Error("RealDutchCowTest auctioneer is " + bound + ", expected " + AUCTIONEER);
+        }
+        log("RealDutchCowTest " + link(placerAddress));
+        log("RealDutchCowTest deployment finished.");
+        const saved = JSON.parse(localStorage.getItem("dutchcow-base-deployment") || "{}");
+        saved.placer = placerAddress;
+        saved.auctioneer = saved.auctioneer || AUCTIONEER;
+        localStorage.setItem("dutchcow-base-deployment", JSON.stringify(saved));
+      } finally {
+        connectBtn.disabled = false;
+        deployBtn.disabled = signer == null;
+        placerBtn.disabled = signer == null;
+      }
+    }
+
+    connectBtn.addEventListener("click", () => connect().catch((err) => {
+      log(err.shortMessage || err.message || String(err));
+    }));
+    deployBtn.addEventListener("click", () => deploy().catch((err) => {
+      log(err.shortMessage || err.message || String(err));
+    }));
+    placerBtn.addEventListener("click", () => deployPlacer().catch((err) => {
+      log(err.shortMessage || err.message || String(err));
+    }));
+
+    const saved = localStorage.getItem("dutchcow-base-deployment");
+    if (saved) {
+      const prior = JSON.parse(saved);
+      log("Last deployment from this browser: handler " + prior.handler + ", auctioneer " + prior.auctioneer);
+    }
+  </script>
+</body>
+</html>

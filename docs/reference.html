@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Dutch CoWs reference</title>
+  <style>
+    :root {
+      --navy: #0b1f3a;
+      --navy-soft: #3b4d68;
+      --sky: #6fc8f2;
+      --sky-pale: #e6f5fd;
+      --lavender: #f1ebfb;
+      --cream: #fbf4df;
+      --cream-deep: #f5e7bd;
+      --line: #dbe6f0;
+      --card: #ffffff;
+      --link: #1f6fd1;
+      --code-bg: #f3f7fb;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      color: var(--navy);
+      background: linear-gradient(180deg, var(--sky-pale) 0%, var(--lavender) 55%, #fbf4fa 100%) fixed;
+      min-height: 100vh;
+    }
+    header.bar { background: var(--card); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 10; }
+    header.bar .inner { max-width: 860px; margin: 0 auto; padding: .85rem 1.25rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+    .brand { font-weight: 700; font-size: 1rem; color: var(--navy); text-decoration: none; }
+    .brand .dot { display: inline-block; width: .6rem; height: .6rem; border-radius: 999px; background: var(--sky); margin-right: .5rem; vertical-align: middle; }
+    nav { display: flex; gap: .4rem; flex-wrap: wrap; }
+    nav a { color: var(--navy); text-decoration: none; font-weight: 600; font-size: .9rem; padding: .4rem .85rem; border-radius: 999px; border: 1px solid var(--line); background: var(--card); }
+    nav a:hover { background: var(--cream); border-color: var(--cream-deep); }
+    main { max-width: 860px; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+    .hero { background: var(--card); border-radius: 18px; padding: 2.2rem 2.2rem 2rem; box-shadow: 0 10px 30px rgba(11,31,58,.08); border: 1px solid var(--line); border-top: 4px solid var(--cream-deep); }
+    .eyebrow { text-transform: uppercase; letter-spacing: .12em; font-size: .75rem; color: var(--link); font-weight: 700; margin: 0 0 .5rem; }
+    h1 { font-size: 2.1rem; line-height: 1.15; margin: 0 0 .7rem; letter-spacing: -.02em; }
+    h2 { font-size: 1.35rem; margin: 0 0 .6rem; }
+    .lede, p { color: var(--navy-soft); }
+    p strong, li strong { color: var(--navy); }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 1.6rem 1.7rem; box-shadow: 0 6px 20px rgba(11,31,58,.05); margin-top: 1.4rem; }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .88em; background: var(--code-bg); padding: .1rem .35rem; border-radius: 6px; color: var(--navy); }
+    pre { background: var(--navy); color: #e8f3ff; padding: 1.1rem 1.2rem; border-radius: 12px; overflow-x: auto; font: .88rem/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    pre code { background: none; padding: 0; color: inherit; }
+    table { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: .6rem; }
+    th, td { text-align: left; padding: .65rem .55rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th { font-size: .78rem; text-transform: uppercase; letter-spacing: .08em; color: var(--navy-soft); font-weight: 700; background: var(--cream); }
+    td:first-child { font-weight: 600; color: var(--navy); }
+    a { color: var(--link); }
+    .note { background: var(--cream); border: 1px solid var(--cream-deep); border-radius: 12px; padding: .9rem 1.05rem; margin-top: 1rem; }
+    footer { margin-top: 2.5rem; color: var(--navy-soft); font-size: .9rem; text-align: center; }
+    footer a { font-weight: 600; text-decoration: none; }
+    @media (max-width: 720px) { h1 { font-size: 1.7rem; } .hero, .card { padding: 1.3rem; } }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <div class="inner">
+      <a class="brand" href="index.html"><span class="dot"></span>Coby's Dutch CoWs</a>
+      <nav>
+        <a href="index.html">Guide</a>
+        <a href="#price">Price</a>
+        <a href="#fees">Fees</a>
+        <a href="#reverts">Reverts</a>
+        <a href="https://github.com/cobymnun1/DutchCow">GitHub</a>
+      </nav>
+    </div>
+  </header>
+  <main>
+    <div class="hero">
+      <p class="eyebrow">Contract behavior on Base</p>
+      <h1>Dutch CoWs reference</h1>
+      <p class="lede">This is what the contracts in <code>src/</code> do on Base, chain id 8453. The plain-text copy for GitHub is <a href="reference.md">reference.md</a>. The integration steps are on the <a href="index.html">guide</a>. The source comments say the software comes with no warranty.</p>
+    </div>
+
+    <section class="card">
+      <h2>Contracts</h2>
+      <table>
+        <thead><tr><th>Name</th><th>Address</th></tr></thead>
+        <tbody>
+          <tr><td>Auctioneer</td><td><a href="https://basescan.org/address/0xE105d00b8E13Cb7f33Ea22cA2c2320f40A0E2c63">0xE105d00b8E13Cb7f33Ea22cA2c2320f40A0E2c63</a></td></tr>
+          <tr><td>Handler</td><td><a href="https://basescan.org/address/0xB417180c2FD563bE2fB7833E95908B4D243bB62b">0xB417180c2FD563bE2fB7833E95908B4D243bB62b</a></td></tr>
+          <tr><td>Escrow implementation</td><td><a href="https://basescan.org/address/0x2607A4712ed8C0BE50A92f71f32f0cBE0C366de9">0x2607A4712ed8C0BE50A92f71f32f0cBE0C366de9</a></td></tr>
+          <tr><td>ComposableCoW</td><td><a href="https://basescan.org/address/0xfdaFc9d1902f4e0b84f65F49f244b32b31013b74">0xfdaFc9d1902f4e0b84f65F49f244b32b31013b74</a></td></tr>
+          <tr><td>Settlement</td><td><a href="https://basescan.org/address/0x9008D19f58AAbD9eD0D60971565AA8510560ab41">0x9008D19f58AAbD9eD0D60971565AA8510560ab41</a></td></tr>
+          <tr><td>Vault relayer</td><td><a href="https://basescan.org/address/0xC92E8bdf79f0507f65a392b0ab4667716BFE0110">0xC92E8bdf79f0507f65a392b0ab4667716BFE0110</a></td></tr>
+        </tbody>
+      </table>
+      <div class="note"><code>0xe537e7206526486A2b4fBe7679Ee779734462437</code> is <code>RealDutchCowTest</code>. It is not the integration path. <code>place</code> reverts unless the call carries ETH, and the contract does not forward tokens it receives.</div>
+    </section>
+
+    <section class="card">
+      <h2>Who calls what</h2>
+      <p>The integrator's contract holds the sell token and calls <code>placeOrder</code>. The auctioneer deploys an escrow clone. The escrow registers one conditional order on ComposableCoW, with <code>DutchAuction</code> as the handler.</p>
+      <p>These contracts do not post to the orderbook and do not run a solver. A CoW watch tower sees <code>ConditionalOrderCreated</code> and posts the order returned by <code>getTradeableOrder</code>. A solver calls <code>GPv2Settlement.settle</code>. Settlement asks the escrow for an EIP-1271 signature. The escrow forwards that check to ComposableCoW, which calls <code>DutchAuction.verify</code>.</p>
+      <p>Settlement pays the buy token to <code>receiver</code> from its own balance and pulls the sell token from the escrow through the vault relayer. Dutch CoWs does not forward the buy token. <code>receiver</code> is the contract that called <code>placeOrder</code>.</p>
+    </section>
+
+    <section class="card">
+      <h2>placeOrder</h2>
+      <p><code>AuctionParams</code> encodes the same way as <code>Data</code>. <code>placeOrder</code> is <code>nonReentrant</code> and reverts unless all of these hold:</p>
+      <ul>
+        <li><code>sellAmount &gt; 0</code> and <code>maxAmount &gt; 0</code></li>
+        <li><code>maxAmount &lt;= type(uint256).max / 10_000</code></li>
+        <li><code>slippageBps</code> is 51 through 9998 (0.51% through 99.98%)</li>
+        <li><code>validFor &gt;= 25</code></li>
+        <li><code>maxAmount * slippageBps / 10_000 &gt;= validFor</code></li>
+        <li><code>receiver == msg.sender</code></li>
+        <li><code>startBlock == block.number</code></li>
+        <li>the caller has approved the predicted escrow for at least <code>sellAmount</code></li>
+      </ul>
+      <p>The escrow address is a CREATE2 clone. The salt is <code>keccak256(abi.encode(msg.sender, params))</code> and the clone arguments are <code>abi.encode(params)</code>. <code>predictEscrow</code> uses the caller's address, so a call from any other address returns a different escrow.</p>
+      <p>The escrow then requires the allowance to be at least <code>sellAmount</code> and strictly below <code>2 * sellAmount</code>, and <code>sellAmount</code> to be at most <code>type(uint256).max / 2</code>. It pulls the whole allowance. If its balance is then below <code>sellAmount</code>, it reverts <code>ShortAfterFee</code>. It approves the vault relayer for exactly <code>sellAmount</code> and registers the order. <code>placeOrder</code> returns that conditional-order hash.</p>
+    </section>
+
+    <section class="card" id="price">
+      <h2>Price</h2>
+      <pre><code>floor = maxAmount * (10_000 - slippageBps) / 10_000
+step  = (maxAmount - floor) / validFor</code></pre>
+      <p>On blocks <code>startBlock</code> through <code>startBlock + 4</code> the quoted buy amount is <code>maxAmount</code>. From <code>startBlock + 5</code>:</p>
+      <pre><code>buyAmount = maxAmount - (block.number - startBlock - 4) * step</code></pre>
+      <p>Quoting stops when <code>block.number &gt;= startBlock + validFor</code>. The last quoted block is <code>startBlock + validFor - 1</code>, which is five steps above <code>floor</code>, plus any remainder from the division. The auction does not quote <code>floor</code> itself.</p>
+      <p><code>verify</code> accepts a settlement buy amount greater than or equal to the current price. A smaller amount reverts <code>BelowFloor</code>. A solver can pay more than the current price. It cannot pay less.</p>
+      <p>The posted order's <code>validTo</code> is <code>block.timestamp</code> plus <code>((blocksLeft * 2) / 10)</code> seconds, and at least 1 second. That is 0.2 seconds per block still left, which matches a 200ms block.</p>
+    </section>
+
+    <section class="card" id="fees">
+      <h2>Two different 0.1% amounts</h2>
+      <p>The fill fee is a CoW partner fee. Every order uses app data <code>0x09eed5e4a791d7763f86d80bace7aac36a981efa30a39e45b9f65adf28d8b932</code>. On the Base orderbook, orders with that hash carried <code>volumeBps: 10</code> to <code>0x785fAA8D709D7CaAD63d5FbDB750D4a22600d30d</code>, which is 0.1% of volume. The handler does not transfer it. <code>verify</code> rejects any other <code>appData</code>.</p>
+      <p>The refund tip is separate. After <code>block.number &gt; startBlock + validFor</code>, anyone can call <code>releaseFunds</code>. The caller receives <code>balance / 1000</code> of the escrow's sell-token balance, and the rest goes to <code>receiver</code>. If the balance is below 1000 raw units, the tip is zero and the owner receives all of it.</p>
+      <p>Quoting already stopped at <code>startBlock + validFor</code>. The first block that can release is <code>startBlock + validFor + 1</code>. <code>releaseFunds</code> removes the conditional order before it pays. If the token blocks the payout, the removal still stands and a later call tries the payout again.</p>
+    </section>
+
+    <section class="card">
+      <h2>When quoting stops</h2>
+      <p><code>getTradeableOrder</code> reverts <code>PollNever("Filled")</code> when the escrow's sell-token balance is below <code>sellAmount</code> or its allowance to the vault relayer is below <code>sellAmount</code>. Donating the sell token back does not restore the allowance, so it does not reopen the order. <code>verify</code> uses the same check and reverts <code>Filled</code>.</p>
+      <p>The posted order is a fill-or-kill sell. <code>feeAmount</code> is 0, <code>partiallyFillable</code> is false, and both balances are ERC-20. Sell token, buy token, receiver, and sell amount must match the auction or <code>verify</code> reverts <code>FieldMismatch</code>.</p>
+    </section>
+
+    <section class="card" id="reverts">
+      <h2>Revert strings</h2>
+      <table>
+        <thead><tr><th>String</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td>NothingToSell</td><td><code>sellAmount</code> is 0.</td></tr>
+          <tr><td>SellingForNothing</td><td><code>maxAmount</code> is 0.</td></tr>
+          <tr><td>PricePanicPreventer</td><td><code>maxAmount</code> is above <code>type(uint256).max / 10_000</code>.</td></tr>
+          <tr><td>BadSlippage</td><td><code>slippageBps</code> is outside 51..9998.</td></tr>
+          <tr><td>BadStart</td><td><code>startBlock</code> is not the current block.</td></tr>
+          <tr><td>AuctionTooShort</td><td><code>validFor</code> is below 25.</td></tr>
+          <tr><td>BeneficiaryOrdersNotAllowed</td><td><code>receiver</code> is not the caller.</td></tr>
+          <tr><td>PreventStepSizeUnderflow</td><td><code>maxAmount * slippageBps / 10_000</code> is below <code>validFor</code>.</td></tr>
+          <tr><td>BadApproval</td><td>The allowance is outside the allowed range, or <code>sellAmount</code> exceeds <code>type(uint256).max / 2</code>.</td></tr>
+          <tr><td>ShortAfterFee</td><td>The balance after pulling the allowance is below <code>sellAmount</code>.</td></tr>
+          <tr><td>Filled</td><td>Escrow balance or vault allowance is below <code>sellAmount</code>.</td></tr>
+          <tr><td>BelowFloor</td><td>The settlement buy amount is below the current price.</td></tr>
+          <tr><td>OutsideWindow</td><td>The settlement block is outside the auction.</td></tr>
+          <tr><td>AuctionInProgress</td><td><code>releaseFunds</code> was called too early.</td></tr>
+        </tbody>
+      </table>
+      <p>The complete list, including the poll reverts, is in <a href="reference.md">reference.md</a>.</p>
+    </section>
+
+    <footer>
+      <a href="index.html">Guide</a> · <a href="reference.md">reference.md</a> · <a href="guide.md">guide.md</a> · <a href="https://x.com/Cobymnun">@Cobymnun</a>
+    </footer>
+  </main>
+</body>
+</html>

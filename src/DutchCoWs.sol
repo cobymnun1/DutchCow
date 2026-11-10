@@ -7,7 +7,6 @@ import {IConditionalOrder, IConditionalOrderGenerator} from "composable-cow/src/
 import {IERC165} from "@openzeppelin/utils/introspection/IERC165.sol";
 import {IDutchCoWEscrow} from "./IDutchCoW.sol";
 
-// TEST DEPLOYMENT 
 // Author: @cobymnun on x, inspired by @kayibal's original Dutch CoWs.
 // block times are set for base. 
 // maxAmount is what you want to start the auction at. reciever is you, validFor is auction duration measured in blocks. 

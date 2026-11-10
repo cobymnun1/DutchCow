@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Coby's Dutch CoWs integration guide</title>
+  <style>
+    :root {
+      --navy: #0b1f3a;
+      --navy-soft: #3b4d68;
+      --sky: #6fc8f2;
+      --sky-pale: #e6f5fd;
+      --lavender: #f1ebfb;
+      --cream: #fbf4df;
+      --cream-deep: #f5e7bd;
+      --line: #dbe6f0;
+      --card: #ffffff;
+      --link: #1f6fd1;
+      --code-bg: #f3f7fb;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      color: var(--navy);
+      background: linear-gradient(180deg, var(--sky-pale) 0%, var(--lavender) 55%, #fbf4fa 100%) fixed;
+      min-height: 100vh;
+    }
+    header.bar {
+      background: var(--card);
+      border-bottom: 1px solid var(--line);
+      position: sticky; top: 0; z-index: 10;
+    }
+    header.bar .inner {
+      max-width: 860px; margin: 0 auto; padding: .85rem 1.25rem;
+      display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+    }
+    .brand { font-weight: 700; font-size: 1rem; color: var(--navy); text-decoration: none; }
+    .brand .dot { display: inline-block; width: .6rem; height: .6rem; border-radius: 999px; background: var(--sky); margin-right: .5rem; vertical-align: middle; }
+    nav { display: flex; gap: .4rem; }
+    nav a {
+      color: var(--navy); text-decoration: none; font-weight: 600; font-size: .9rem;
+      padding: .4rem .85rem; border-radius: 999px; border: 1px solid var(--line); background: var(--card);
+    }
+    nav a:hover { background: var(--cream); border-color: var(--cream-deep); }
+    main { max-width: 860px; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+    .hero {
+      background: var(--card); border-radius: 18px; padding: 2.2rem 2.2rem 2rem;
+      box-shadow: 0 10px 30px rgba(11,31,58,.08); border: 1px solid var(--line);
+      border-top: 4px solid var(--cream-deep);
+    }
+    .eyebrow { text-transform: uppercase; letter-spacing: .12em; font-size: .75rem; color: var(--link); font-weight: 700; margin: 0 0 .5rem; }
+    h1 { font-size: 2.1rem; line-height: 1.15; margin: 0 0 .7rem; letter-spacing: -.02em; }
+    .lede { font-size: 1.08rem; color: var(--navy-soft); margin: 0 0 1.2rem; max-width: 60ch; }
+    .cta { display: flex; gap: .6rem; flex-wrap: wrap; }
+    .btn { display: inline-block; padding: .65rem 1.1rem; border-radius: 999px; font-weight: 600; text-decoration: none; font-size: .95rem; }
+    .btn.primary { background: var(--navy); color: #fff; }
+    .btn.primary:hover { background: #17335c; }
+    .btn.cream { background: var(--cream); color: var(--navy); border: 1px solid var(--cream-deep); }
+    .btn.cream:hover { background: var(--cream-deep); }
+    section { margin-top: 2rem; }
+    .card {
+      background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 1.6rem 1.7rem;
+      box-shadow: 0 6px 20px rgba(11,31,58,.05);
+    }
+    h2 { font-size: 1.35rem; margin: 0 0 .6rem; letter-spacing: -.01em; }
+    p { margin: .5rem 0; color: var(--navy-soft); }
+    p strong { color: var(--navy); }
+    code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .88em;
+      background: var(--code-bg); padding: .1rem .35rem; border-radius: 6px; color: var(--navy);
+    }
+    pre {
+      background: var(--navy); color: #e8f3ff; padding: 1.1rem 1.2rem; border-radius: 12px; overflow-x: auto;
+      font: .88rem/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; margin: .9rem 0 0;
+    }
+    pre code { background: none; padding: 0; color: inherit; font-size: inherit; }
+    .steps { display: grid; gap: .8rem; grid-template-columns: repeat(3, 1fr); margin-top: 1rem; }
+    .step { background: var(--cream); border: 1px solid var(--cream-deep); border-radius: 14px; padding: 1rem 1.05rem; }
+    .step .n {
+      display: inline-flex; width: 1.7rem; height: 1.7rem; align-items: center; justify-content: center;
+      border-radius: 999px; background: var(--navy); color: #fff; font-weight: 700; font-size: .85rem; margin-bottom: .4rem;
+    }
+    .step b { color: var(--navy); display: block; margin-bottom: .25rem; }
+    .step p { font-size: .92rem; margin: 0; }
+    .note { background: var(--cream); border: 1px solid var(--cream-deep); border-radius: 12px; padding: .9rem 1.05rem; margin-top: 1rem; color: var(--navy-soft); font-size: .95rem; }
+    .fee { background: var(--cream); border: 1px solid var(--cream-deep); border-radius: 12px; padding: .9rem 1.05rem; margin-top: 1rem; color: var(--navy-soft); font-size: .95rem; }
+    .fee strong { color: var(--navy); }
+    table { width: 100%; border-collapse: separate; border-spacing: 0; margin-top: .6rem; }
+    th, td { text-align: left; padding: .7rem .6rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th { font-size: .78rem; text-transform: uppercase; letter-spacing: .08em; color: var(--navy-soft); font-weight: 700; background: var(--cream); }
+    th:first-child { border-top-left-radius: 10px; }
+    th:last-child { border-top-right-radius: 10px; }
+    td:first-child { font-weight: 600; color: var(--navy); white-space: nowrap; width: 1%; padding-right: 1.2rem; }
+    td a { color: var(--link); text-decoration: none; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .86rem; word-break: break-all; }
+    td a:hover { text-decoration: underline; }
+    tr:last-child td { border-bottom: none; }
+    footer { margin-top: 2.5rem; color: var(--navy-soft); font-size: .9rem; text-align: center; }
+    footer a { color: var(--link); text-decoration: none; font-weight: 600; }
+    @media (max-width: 720px) {
+      h1 { font-size: 1.7rem; }
+      .hero { padding: 1.5rem; }
+      .steps { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <div class="inner">
+      <a class="brand" href="#top"><span class="dot"></span>Coby's Dutch CoWs</a>
+      <nav>
+        <a href="reference.html">Docs</a>
+        <a href="#addresses">Deployments</a>
+        <a href="https://github.com/cobymnun1/DutchCow">GitHub</a>
+        <a href="https://x.com/Cobymnun">@Cobymnun</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <div class="hero">
+      <p class="eyebrow">Dutch auctions for CoW Protocol on Base</p>
+      <h1>Coby's Dutch CoWs integration guide</h1>
+      <p class="lede">Dutch CoWs allows smart contracts to place Dutch Auction orders directly to CoW Protocol. A contract, whether via a hook or a user interaction, can place an order filled by a verified solver without the developer needing to set up any off-chain infrastructure.</p>
+      <div class="cta">
+        <a class="btn primary" href="#integrate">Integrate</a>
+        <a class="btn cream" href="https://github.com/cobymnun1/DutchCow">View on GitHub</a>
+      </div>
+    </div>
+
+    <section class="card" id="integrate">
+      <h2>Integrate</h2>
+      <p>Do these three calls in one transaction, from the contract that holds the sell token. <code>receiver</code> must be that contract and <code>startBlock</code> must be <code>block.number</code>. The interface is <code>src/IDutchCoW.sol</code>.</p>
+      <div class="steps">
+        <div class="step"><span class="n">1</span><b>Predict the escrow</b><p><code>predictEscrow(params)</code> returns the address the escrow will have.</p></div>
+        <div class="step"><span class="n">2</span><b>Approve it</b><p>Approve that address for <code>sellAmount</code> of the sell token.</p></div>
+        <div class="step"><span class="n">3</span><b>Place the order</b><p><code>placeOrder(params)</code> deploys the escrow and registers the auction.</p></div>
+      </div>
+      <pre><code>AuctionParams memory params = AuctionParams({
+    sellToken: sellToken,
+    buyToken: buyToken,
+    sellAmount: sellAmount,
+    maxAmount: maxAmount,
+    receiver: address(this),
+    startBlock: block.number,
+    validFor: validFor,
+    slippageBps: slippageBps
+});
+
+address escrow = auctioneer.predictEscrow(params);
+</code></pre>
+      <p><strong>Option A: standard approve.</strong> Use this when the token's <code>approve</code> returns a bool, which covers most ERC-20s.</p>
+      <pre><code>IERC20(sellToken).approve(escrow, sellAmount);
+auctioneer.placeOrder(params);</code></pre>
+      <p>Some tokens, such as USDT, return nothing from <code>approve</code>. Option A reverts on those. Option B accepts both kinds of return, so use it when you have not tested the token.</p>
+      <p><strong>Option B: low-level approve.</strong> Accepts a bool return or no return.</p>
+      <pre><code>(bool ok, bytes memory data) = sellToken.call(abi.encodeWithSelector(0x095ea7b3, escrow, sellAmount));
+require(ok &amp;&amp; (data.length == 0 || abi.decode(data, (bool))), "approve");
+auctioneer.placeOrder(params);</code></pre>
+      <div class="note">
+        <strong>Allowance:</strong> at least <code>sellAmount</code> and less than <code>2 * sellAmount</code>. The escrow pulls the whole allowance. Approve a little more than <code>sellAmount</code> only when the token takes a transfer fee.<br>
+        <strong>Parameters:</strong> <code>slippageBps</code> allows 51 to 9998, which is 0.51% to 99.98%. <code>validFor</code> must be at least 25 blocks. <code>maxAmount * slippageBps / 10_000</code> must be at least <code>validFor</code>, or the price step rounds to zero and the call reverts.
+      </div>
+      <div class="fee">
+        <strong>Fee:</strong> Dutch CoWs takes a <strong>0.1% fee on volume</strong>. It is a CoW partner fee set in the order's app data (<code>partnerFee</code>, <code>volumeBps: 10</code>, recipient <code>0x785fAA8D709D7CaAD63d5FbDB750D4a22600d30d</code>). Your order's app data is the handler's <code>APP_DATA</code> constant, so it carries the fee with every fill.
+      </div>
+    </section>
+
+    <section class="card" id="how">
+      <h2>How it works</h2>
+      <p>Your contract calls the auctioneer. The auctioneer deploys a small escrow, pulls the sell token into it, and registers the order with ComposableCoW. The CoW watch tower posts the order to the orderbook. A solver fills it by paying the buy token to your contract and taking the sell token from the escrow.</p>
+      <p><strong>The price</strong> stays at <code>maxAmount</code> for the first 5 blocks, then falls. <code>slippageBps</code> is the total drop in basis points of <code>maxAmount</code>. <code>validFor</code> is how many Base blocks that drop takes. Base blocks are 200ms. The floor is <code>maxAmount * (10_000 - slippageBps) / 10_000</code>.</p>
+      <p><strong>If nobody fills it,</strong> anyone can call <code>releaseFunds</code> on the escrow once <code>block.number</code> is greater than <code>startBlock + validFor</code>. The sell tokens go back to your contract. When the balance is at least 1000 raw units, the caller keeps <code>balance / 1000</code>. The full behavior is in the <a href="reference.html">reference</a>.</p>
+    </section>
+
+    <section class="card" id="addresses">
+      <h2>Base Deployment Addresses</h2>
+      <table>
+        <thead><tr><th>Contract</th><th>Address</th></tr></thead>
+        <tbody>
+          <tr><td>Auctioneer</td><td><a href="https://basescan.org/address/0xE105d00b8E13Cb7f33Ea22cA2c2320f40A0E2c63">0xE105d00b8E13Cb7f33Ea22cA2c2320f40A0E2c63</a></td></tr>
+          <tr><td>Handler</td><td><a href="https://basescan.org/address/0xB417180c2FD563bE2fB7833E95908B4D243bB62b">0xB417180c2FD563bE2fB7833E95908B4D243bB62b</a></td></tr>
+          <tr><td>Escrow implementation</td><td><a href="https://basescan.org/address/0x2607A4712ed8C0BE50A92f71f32f0cBE0C366de9">0x2607A4712ed8C0BE50A92f71f32f0cBE0C366de9</a></td></tr>
+          <tr><td>ComposableCoW</td><td><a href="https://basescan.org/address/0xfdaFc9d1902f4e0b84f65F49f244b32b31013b74">0xfdaFc9d1902f4e0b84f65F49f244b32b31013b74</a></td></tr>
+          <tr><td>Settlement</td><td><a href="https://basescan.org/address/0x9008D19f58AAbD9eD0D60971565AA8510560ab41">0x9008D19f58AAbD9eD0D60971565AA8510560ab41</a></td></tr>
+          <tr><td>Vault relayer</td><td><a href="https://basescan.org/address/0xC92E8bdf79f0507f65a392b0ab4667716BFE0110">0xC92E8bdf79f0507f65a392b0ab4667716BFE0110</a></td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <footer>
+      Coby's Dutch CoWs · <a href="reference.html">Reference</a> · <a href="guide.md">Guide text</a> · <a href="https://x.com/Cobymnun">@Cobymnun</a> · <a href="https://github.com/cobymnun1/DutchCow">Source on GitHub</a>
+    </footer>
+  </main>
+</body>
+</html>

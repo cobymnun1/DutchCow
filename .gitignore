@@ -21,9 +21,11 @@ local/database/
 local/watchtower-database/
 
 # Local-only files kept out of git (root paths; see note on tracked files)
+/base-mainnet-deployment.txt
 /Aunctioneer-old.sol
 /t Dutch auction verification tests"
 /src/TestAuctionVault.sol
+/cow-grant/
 
 # Environment and secrets
 .env

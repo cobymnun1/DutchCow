@@ -3,186 +3,414 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>DutchAuction on Base</title>
+  <title>Real Dutch Cow auction</title>
   <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.5/dist/ethers.umd.min.js"></script>
   <style>
-    :root { color-scheme: dark; font: 16px system-ui, sans-serif; }
-    body { max-width: 760px; margin: 2rem auto; padding: 0 1rem; background: #111; color: #eee; }
-    h1 { margin-bottom: .25rem; }
+    :root { color-scheme: dark; font: 16px/1.45 system-ui, sans-serif; }
+    body { max-width: 760px; margin: 2.5rem auto; padding: 0 1rem 3rem; background: #101010; color: #eee; }
+    h1 { font-size: 1.45rem; margin: 0 0 .35rem; }
+    p { margin: .4rem 0; }
     .muted { color: #aaa; }
-    .warning { padding: 1rem; border: 1px solid #a66d00; background: #332400; border-radius: 8px; }
-    form { display: grid; gap: .75rem; margin-top: 1rem; }
+    form { display: grid; gap: .7rem; margin-top: 1rem; }
     label { display: grid; gap: .3rem; }
-    input { padding: .65rem; color: inherit; background: #222; border: 1px solid #555; border-radius: 5px; }
-    button { width: fit-content; padding: .7rem 1rem; cursor: pointer; }
-    pre { white-space: pre-wrap; overflow-wrap: anywhere; padding: 1rem; background: #1c1c1c; border-radius: 8px; }
-    .row { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; }
+    input { padding: .6rem; color: inherit; background: #1b1b1b; border: 1px solid #555; border-radius: 5px; }
+    button { padding: .7rem 1rem; border-radius: 6px; border: 1px solid #666; background: #1d1d1d; color: inherit; cursor: pointer; }
+    button:disabled { opacity: .45; cursor: default; }
+    button.primary { background: #e8e8e8; color: #111; border-color: #e8e8e8; }
+    .row { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; margin: 1rem 0; }
+    pre { white-space: pre-wrap; overflow-wrap: anywhere; padding: 1rem; background: #1a1a1a; border-radius: 8px; min-height: 8rem; }
+    a { color: #9ecbff; }
+    code { font-family: ui-monospace, monospace; }
   </style>
 </head>
 <body>
-  <h1>DutchAuction test UI</h1>
-  <p class="muted">Base mainnet, chain ID 8453</p>
-
-  <div class="warning">
-    Enter the deployed <code>TestAuctionVault</code> address below. Your MetaMask
-    address controls that vault; the vault owns the tokens and registers the order.
-  </div>
-
-  <p>
-    Handler:
-    <a id="handlerLink" target="_blank" rel="noreferrer"></a>
-  </p>
-  <p>
-    ComposableCoW:
-    <a id="composableLink" target="_blank" rel="noreferrer"></a>
-  </p>
+  <h1>Place a real auction</h1>
+  <p class="muted">Base mainnet. This calls <code>RealDutchCowTest.place</code> at <code id="placer"></code>, which predicts the escrow, approves it, and calls <code>placeOrder</code> on <code id="auctioneer"></code>.</p>
+  <p>The sell tokens leave your wallet and sit on that test contract, then move into the escrow. Buy tokens and refunds are paid to the test contract. It has no withdraw. Use a small size.</p>
 
   <div class="row">
-    <button id="connect">Connect MetaMask</button>
+    <button id="connect" type="button">Connect MetaMask</button>
     <span id="account" class="muted"></span>
   </div>
 
-  <form id="auctionForm">
-    <label>Vault contract address (contract that owns the tokens)
-      <input id="owner" required placeholder="0x...">
+  <form id="form">
+    <div class="row">
+      <label><input type="radio" name="mode" value="default" checked> Default auction</label>
+      <label><input type="radio" name="mode" value="custom"> My parameters</label>
+      <button id="quote" type="button">Refresh CoinGecko price</button>
+    </div>
+    <label>Sell token
+      <input id="sellToken" required>
     </label>
-    <label>Sell token address
-      <input id="sellToken" required placeholder="0x...">
+    <label>Buy token
+      <input id="buyToken" required>
     </label>
-    <label>Buy token address
-      <input id="buyToken" required placeholder="0x...">
+    <label>USDC to sell
+      <input id="sellAmount" required>
     </label>
-    <label>Sell amount (human units)
-      <input id="sellAmount" required placeholder="1.0">
+    <label>Max buy amount (token units, the auction start price)
+      <input id="maxAmount" required>
     </label>
-    <label>Maximum buy amount (human units)
-      <input id="maxAmount" required placeholder="100.0">
+    <label>Slippage, basis points (51–9998)
+      <input id="slippageBps" type="number" min="51" max="9998" required>
     </label>
-    <label>Auction start delay (Base blocks)
-      <input id="startDelay" type="number" min="0" value="2" required>
+    <label>Duration, Base blocks (minimum 25)
+      <input id="validFor" type="number" min="25" required>
     </label>
-    <label>Auction duration (Base blocks)
-      <input id="validFor" type="number" min="1" value="100" required>
-    </label>
-    <label>Slippage (basis points; 100 = 1%)
-      <input id="slippageBps" type="number" min="0" max="10000" value="100" required>
-    </label>
-    <button type="submit">Build Safe transaction calldata</button>
+    <button id="run" class="primary" type="submit" disabled>Transfer sell tokens and place the auction</button>
   </form>
 
-  <h2>Output</h2>
-  <pre id="output">Connect MetaMask, fill in the fields, and build the calldata.</pre>
+  <p id="quoteLine" class="muted"></p>
+  <p id="balanceLine" class="muted"></p>
+  <pre id="log">Connect MetaMask on Base. The default sells the USDC amount below for WETH, starting at the CoinGecko mid and decaying 5% over 1000 blocks. After the auction is placed, this log keeps checking where the tokens are.</pre>
 
   <script>
     const { ethers } = window;
     const CHAIN_ID = 8453n;
-    const HANDLER = "0xEA0dF15691b8bF7A9FBf304Fc1A21193a5C5b11a";
-    const COMPOSABLE_COW = "0xfdaFc9d1902f4e0b84f65F49f244b32b31013b74";
-    const COW_VAULT_RELAYER = "0xC92E8bdf79f0507f65a392b0ab4667716BFE0110";
-    const vaultAbi = [
-      "function approveCow(address token,uint256 amount)",
-      "function createOrder(address handler,bytes32 salt,bytes staticInput)"
-    ];
-    const erc20Abi = [
+    const PLACER = "0xe537e7206526486A2b4fBe7679Ee779734462437";
+    const AUCTIONEER = "0xE105d00b8E13Cb7f33Ea22cA2c2320f40A0E2c63";
+    const USDC = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
+    const WETH = "0x4200000000000000000000000000000000000006";
+    const DEFAULTS = {
+      sellToken: USDC,
+      buyToken: WETH,
+      sellAmount: "1",
+      slippageBps: "500",
+      validFor: "1000"
+    };
+    const ERC20_ABI = [
       "function decimals() view returns (uint8)",
-      "function approve(address spender,uint256 amount)"
+      "function symbol() view returns (string)",
+      "function balanceOf(address) view returns (uint256)",
+      "function transfer(address,uint256)"
+    ];
+    const PLACER_ABI = [
+      "function place(address sellToken, address buyToken, uint256 sellAmount, uint256 maxAmount, uint32 validFor, uint32 slippageBps) payable"
+    ];
+    const ORDER_ABI = [
+      "event OrderPlaced(bytes32 indexed orderId, address indexed owner, tuple(address sellToken, address buyToken, uint256 sellAmount, uint256 maxAmount, address receiver, uint256 startBlock, uint32 validFor, uint32 slippageBps) params, address indexed escrowAddress)"
     ];
 
-    const $ = id => document.getElementById(id);
-    $("handlerLink").textContent = HANDLER;
-    $("handlerLink").href = `https://basescan.org/address/${HANDLER}`;
-    $("composableLink").textContent = COMPOSABLE_COW;
-    $("composableLink").href = `https://basescan.org/address/${COMPOSABLE_COW}`;
-
-    let provider;
+    const READ_RPC = "https://mainnet.base.org";
+    const logEl = document.querySelector("#log");
+    const quoteLine = document.querySelector("#quoteLine");
+    const balanceLine = document.querySelector("#balanceLine");
+    const runBtn = document.querySelector("#run");
     let signer;
+    let quoting = false;
+    let watchTimer;
 
-    $("connect").onclick = async () => {
-      if (!window.ethereum) throw new Error("MetaMask was not found.");
-      provider = new ethers.BrowserProvider(window.ethereum);
-      const network = await provider.getNetwork();
-      if (network.chainId !== CHAIN_ID) {
-        throw new Error("Switch MetaMask to Base mainnet (chain ID 8453).");
-      }
-      signer = await provider.getSigner();
-      $("account").textContent = await signer.getAddress();
-    };
+    document.querySelector("#placer").textContent = PLACER;
+    document.querySelector("#auctioneer").textContent = AUCTIONEER;
 
-    $("auctionForm").onsubmit = async event => {
-      event.preventDefault();
+    function log(line) {
+      if (logEl.textContent.startsWith("Connect MetaMask")) logEl.textContent = "";
+      logEl.textContent += (logEl.textContent ? "\n" : "") + line;
+    }
+
+    function explain(err) {
+      const lines = [];
+      const seen = new Set();
+      const push = (value) => {
+        if (value == null || value === "") return;
+        const text = typeof value === "string" ? value : JSON.stringify(value);
+        if (seen.has(text)) return;
+        seen.add(text);
+        lines.push(text);
+      };
+      push(err.shortMessage);
+      push(err.reason);
+      push(err.revert?.name);
+      if (err.revert?.args?.length) push(err.revert.args.map(String).join(" "));
+      push(err.data);
+      push(err.info?.error?.message);
+      push(err.error?.message);
+      push(err.message);
+      return lines.join("\n") || String(err);
+    }
+
+    function field(id) {
+      return document.querySelector("#" + id).value.trim();
+    }
+
+    function setField(id, value) {
+      document.querySelector("#" + id).value = value;
+    }
+
+    function mode() {
+      return document.querySelector("input[name=mode]:checked").value;
+    }
+
+    function applyDefaults() {
+      quoting = true;
+      setField("sellToken", DEFAULTS.sellToken);
+      setField("buyToken", DEFAULTS.buyToken);
+      setField("sellAmount", DEFAULTS.sellAmount);
+      setField("slippageBps", DEFAULTS.slippageBps);
+      setField("validFor", DEFAULTS.validFor);
+      quoting = false;
+    }
+
+    function usd8(value) {
+      const [whole, frac = ""] = String(value).split(".");
+      const digits = (frac + "00000000").slice(0, 8);
+      return BigInt(whole + digits);
+    }
+
+    function readProvider() {
+      return signer ? signer.provider : new ethers.JsonRpcProvider(READ_RPC);
+    }
+
+    async function tokenInfo(address) {
+      const token = new ethers.Contract(address, ERC20_ABI, readProvider());
+      const [decimals, symbol] = await Promise.all([
+        token.decimals(),
+        token.symbol().catch(() => "TOKEN")
+      ]);
+      return { address, decimals: Number(decimals), symbol, token };
+    }
+
+    async function coingeckoUsd(address) {
+      const url = "https://api.coingecko.com/api/v3/simple/token_price/base?contract_addresses="
+        + address + "&vs_currencies=usd";
+      const response = await fetch(url);
+      const body = await response.json();
+      if (!response.ok) throw new Error(JSON.stringify(body));
+      const price = body[address.toLowerCase()]?.usd;
+      if (price == null) throw new Error("CoinGecko has no Base USD price for " + address + ": " + JSON.stringify(body));
+      return { price, usd8: usd8(price) };
+    }
+
+    async function quote() {
+      const sell = await tokenInfo(ethers.getAddress(field("sellToken")));
+      const buy = await tokenInfo(ethers.getAddress(field("buyToken")));
+      const sellPx = await coingeckoUsd(sell.address);
+      const buyPx = await coingeckoUsd(buy.address);
+      const sellRaw = ethers.parseUnits(field("sellAmount"), sell.decimals);
+      if (sellRaw <= 0n) throw new Error("Sell amount is zero.");
+      const fairBuy = sellRaw * sellPx.usd8 * (10n ** BigInt(buy.decimals)) / ((10n ** BigInt(sell.decimals)) * buyPx.usd8);
+      const maxBuy = fairBuy;
+      if (maxBuy <= 0n) throw new Error("Quoted max buy rounded to zero. Raise the sell amount.");
+      setField("maxAmount", ethers.formatUnits(maxBuy, buy.decimals));
+      const slippage = BigInt(field("slippageBps"));
+      const validFor = BigInt(field("validFor"));
+      const floor = maxBuy * (10000n - slippage) / 10000n;
+      const stepCheck = maxBuy * slippage / 10000n;
+      quoteLine.textContent = [
+        "CoinGecko " + sell.symbol + " $" + sellPx.price + ", " + buy.symbol + " $" + buyPx.price + ".",
+        "Start " + ethers.formatUnits(maxBuy, buy.decimals) + " " + buy.symbol + ", the mid.",
+        "Floor " + ethers.formatUnits(floor, buy.decimals) + " " + buy.symbol
+          + " after " + validFor + " blocks, " + (Number(slippage) / 100) + "% less than the mid.",
+        stepCheck >= validFor ? "Step check passes." : "Step check fails: max * slippage / 10000 is " + stepCheck + ", duration is " + validFor + "."
+      ].join(" ");
+      return { sell, buy, sellRaw, maxBuy, floor };
+    }
+
+    async function showBalances() {
+      if (!signer) return;
       try {
-        if (!provider || !signer) throw new Error("Connect MetaMask first.");
-        const network = await provider.getNetwork();
-        if (network.chainId !== CHAIN_ID) {
-          throw new Error("Switch MetaMask to Base mainnet (chain ID 8453).");
-        }
-
-        const owner = ethers.getAddress($("owner").value.trim());
-        const sellToken = ethers.getAddress($("sellToken").value.trim());
-        const buyToken = ethers.getAddress($("buyToken").value.trim());
-        const ownerCode = await provider.getCode(owner);
-        if (ownerCode === "0x") {
-          throw new Error("Safe address must be a deployed Safe contract, not a MetaMask EOA.");
-        }
-        const sellContract = new ethers.Contract(sellToken, erc20Abi, provider);
-        const buyContract = new ethers.Contract(buyToken, erc20Abi, provider);
-        const [sellDecimals, buyDecimals, block] = await Promise.all([
-          sellContract.decimals(), buyContract.decimals(), provider.getBlockNumber()
+        const sell = await tokenInfo(ethers.getAddress(field("sellToken")));
+        const who = await signer.getAddress();
+        const [wallet, contract] = await Promise.all([
+          sell.token.balanceOf(who),
+          sell.token.balanceOf(PLACER)
         ]);
-
-        const validFor = BigInt($("validFor").value);
-        const slippageBps = BigInt($("slippageBps").value);
-        if (validFor < 1n || slippageBps > 10000n) {
-          throw new Error("Duration must be positive and slippage must be <= 10000 bps.");
-        }
-
-        const startBlock = BigInt(block) + BigInt($("startDelay").value);
-        const staticInput = ethers.AbiCoder.defaultAbiCoder().encode(
-          ["tuple(address sellToken,address buyToken,uint256 sellAmount,uint256 maxAmount,address receiver,uint256 startBlock,uint32 validFor,uint32 slippageBps)"],
-          [[
-            sellToken, buyToken,
-            ethers.parseUnits($("sellAmount").value, sellDecimals),
-            ethers.parseUnits($("maxAmount").value, buyDecimals),
-            owner, startBlock, validFor, slippageBps
-          ]]
-        );
-
-        const salt = ethers.hexlify(ethers.randomBytes(32));
-        const params = { handler: HANDLER, salt, staticInput };
-        const vaultInterface = new ethers.Interface(vaultAbi);
-        const createData = vaultInterface.encodeFunctionData(
-          "createOrder", [HANDLER, salt, staticInput]
-        );
-        const approveData = vaultInterface.encodeFunctionData(
-          "approveCow", [sellToken, ethers.MaxUint256]
-        );
-
-        $("output").textContent = JSON.stringify({
-          network: "Base mainnet (8453)",
-          owner,
-          handler: HANDLER,
-          composableCow: COMPOSABLE_COW,
-          cowVaultRelayer: COW_VAULT_RELAYER,
-          currentBlock: block,
-          startBlock: startBlock.toString(),
-          salt,
-          staticInput,
-          vaultCreateOrderTransaction: {
-            to: owner,
-            value: "0",
-            data: createData
-          },
-          vaultApproveCowTransaction: {
-            to: owner,
-            value: "0",
-            data: approveData
-          },
-          nextStep: "Submit both transactions from the vault controller, then give CoW's watchtower time to discover the registered order."
-        }, null, 2);
-      } catch (error) {
-        $("output").textContent = error.shortMessage || error.message || String(error);
+        balanceLine.textContent = "Wallet " + ethers.formatUnits(wallet, sell.decimals) + " " + sell.symbol
+          + ". Test contract " + ethers.formatUnits(contract, sell.decimals) + " " + sell.symbol + ".";
+      } catch (err) {
+        balanceLine.textContent = explain(err);
       }
-    };
+    }
+
+    async function requireBase() {
+      const chainId = await window.ethereum.request({ method: "eth_chainId" });
+      if (BigInt(chainId) === CHAIN_ID) return;
+      try {
+        await window.ethereum.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: "0x2105" }]
+        });
+      } catch (err) {
+        if (err.code !== 4902) throw err;
+        await window.ethereum.request({
+          method: "wallet_addEthereumChain",
+          params: [{
+            chainId: "0x2105",
+            chainName: "Base",
+            nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+            rpcUrls: ["https://mainnet.base.org"],
+            blockExplorerUrls: ["https://basescan.org"]
+          }]
+        });
+      }
+    }
+
+    async function connect() {
+      if (!window.ethereum) throw new Error("MetaMask is not available in this browser.");
+      await window.ethereum.request({ method: "eth_requestAccounts" });
+      await requireBase();
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      signer = await provider.getSigner();
+      const network = await provider.getNetwork();
+      if (network.chainId !== CHAIN_ID) throw new Error("MetaMask is not on Base (8453).");
+      const address = await signer.getAddress();
+      document.querySelector("#account").textContent = address + " · Base";
+      runBtn.disabled = false;
+      log("Connected " + address + ".");
+      if (mode() === "default") applyDefaults();
+      await quote();
+      await showBalances();
+    }
+
+    async function sendTransfer(sellToken, amount) {
+      const data = new ethers.Interface(ERC20_ABI).encodeFunctionData("transfer", [PLACER, amount]);
+      log("Transferring sell tokens to the test contract… confirm in MetaMask.");
+      const tx = await signer.sendTransaction({ to: sellToken, data });
+      log("Transfer https://basescan.org/tx/" + tx.hash);
+      const receipt = await tx.wait();
+      if (receipt.status !== 1) throw new Error("Transfer failed: " + JSON.stringify(receipt));
+      log("Transfer confirmed in block " + receipt.blockNumber + ".");
+    }
+
+    async function run(event) {
+      event.preventDefault();
+      if (!signer) throw new Error("Connect MetaMask first.");
+      runBtn.disabled = true;
+      try {
+        await requireBase();
+        const slippage = Number(field("slippageBps"));
+        const validFor = Number(field("validFor"));
+        if (!(slippage > 50 && slippage < 9999)) throw new Error("BadSlippage");
+        if (validFor < 25) throw new Error("AuctionTooShort");
+        const priced = await quote();
+        const { sell, sellRaw, maxBuy } = priced;
+        if (maxBuy * BigInt(slippage) / 10000n < BigInt(validFor)) throw new Error("PreventStepSizeUnderflow");
+        const who = await signer.getAddress();
+        const walletBal = await sell.token.balanceOf(who);
+        if (walletBal < sellRaw) {
+          throw new Error("Wallet holds " + ethers.formatUnits(walletBal, sell.decimals) + " " + sell.symbol
+            + ", sell amount is " + field("sellAmount") + ".");
+        }
+        let held = await sell.token.balanceOf(PLACER);
+        if (held < sellRaw) {
+          await sendTransfer(sell.address, sellRaw - held);
+          held = await sell.token.balanceOf(PLACER);
+          if (held < sellRaw) throw new Error("Test contract balance is still below the sell amount.");
+        } else {
+          log("Test contract already holds the sell amount.");
+        }
+        const placer = new ethers.Contract(PLACER, PLACER_ABI, signer);
+        const args = [sell.address, ethers.getAddress(field("buyToken")), sellRaw, maxBuy, validFor, slippage];
+        log("Simulating place…");
+        await placer.place.staticCall(...args, { value: 1n });
+        log("Simulation passed. place sends 1 wei and calls the auctioneer… confirm in MetaMask.");
+        const tx = await placer.place(...args, { value: 1n });
+        log("place https://basescan.org/tx/" + tx.hash);
+        const receipt = await tx.wait();
+        if (receipt.status !== 1) throw new Error("place failed: " + JSON.stringify(receipt));
+        const parsed = receipt.logs.map((entry) => {
+          try { return new ethers.Interface(ORDER_ABI).parseLog(entry); } catch { return null; }
+        }).filter(Boolean);
+        const placed = parsed.find((entry) => entry.name === "OrderPlaced");
+        if (!placed) throw new Error("Transaction mined but OrderPlaced was not in the receipt.");
+        log("Order " + placed.args.orderId);
+        log("Escrow https://basescan.org/address/" + placed.args.escrowAddress);
+        log("Auction placed in block " + receipt.blockNumber + ". Watching balances every 4 seconds.");
+        watchAuction(placed.args.escrowAddress, priced.sell, priced.buy, Number(placed.args.params.startBlock), Number(placed.args.params.validFor));
+        await showBalances();
+      } finally {
+        runBtn.disabled = signer == null;
+      }
+    }
+
+    function fmt(amount, decimals) {
+      return ethers.formatUnits(amount, decimals);
+    }
+
+    function watchAuction(escrow, sell, buy, startBlock, validFor) {
+      if (watchTimer) clearInterval(watchTimer);
+      const tick = async () => {
+        try {
+          const block = await readProvider().getBlockNumber();
+          const left = startBlock + validFor - block;
+          const who = signer ? await signer.getAddress() : null;
+          const [escrowSell, escrowBuy, placerSell, placerBuy, walletSell, walletBuy] = await Promise.all([
+            sell.token.balanceOf(escrow),
+            buy.token.balanceOf(escrow),
+            sell.token.balanceOf(PLACER),
+            buy.token.balanceOf(PLACER),
+            who ? sell.token.balanceOf(who) : 0n,
+            who ? buy.token.balanceOf(who) : 0n
+          ]);
+          let book = "Orderbook check failed.";
+          try {
+            const response = await fetch("https://api.cow.fi/base/api/v1/account/" + escrow + "/orders");
+            const orders = await response.json();
+            if (!response.ok) throw new Error(JSON.stringify(orders));
+            const latest = Array.isArray(orders) ? orders[0] : null;
+            book = latest
+              ? "Latest orderbook order is " + latest.status + ", buy " + fmt(latest.buyAmount, buy.decimals) + " " + buy.symbol + ", validTo " + latest.validTo + "."
+              : "No orderbook order for this escrow yet.";
+          } catch (err) {
+            book = "Orderbook: " + explain(err);
+          }
+          const location = escrowSell > 0n
+            ? "The sell token is still in the escrow."
+            : placerBuy > 0n
+              ? "The buy token is on the test contract."
+              : placerSell > 0n
+                ? "The sell token is on the test contract."
+                : "Neither the escrow nor the test contract holds the sell or buy token.";
+          log([
+            "block " + block + (left > 0 ? ", " + left + " blocks left." : ", auction window is over."),
+            "Escrow " + fmt(escrowSell, sell.decimals) + " " + sell.symbol + " and " + fmt(escrowBuy, buy.decimals) + " " + buy.symbol + ".",
+            "Test contract " + fmt(placerSell, sell.decimals) + " " + sell.symbol + " and " + fmt(placerBuy, buy.decimals) + " " + buy.symbol + ".",
+            "Wallet " + fmt(walletSell, sell.decimals) + " " + sell.symbol + " and " + fmt(walletBuy, buy.decimals) + " " + buy.symbol + ".",
+            location,
+            book
+          ].join(" "));
+        } catch (err) {
+          log(explain(err));
+        }
+      };
+      tick();
+      watchTimer = setInterval(tick, 4000);
+    }
+
+    document.querySelector("#connect").addEventListener("click", () => connect().catch((err) => log(explain(err))));
+    document.querySelector("#quote").addEventListener("click", () => quote().then(showBalances).catch((err) => {
+      quoteLine.textContent = explain(err);
+      log(explain(err));
+    }));
+    document.querySelector("#form").addEventListener("submit", (event) => run(event).catch((err) => log(explain(err))));
+    document.querySelectorAll("input[name=mode]").forEach((input) => {
+      input.addEventListener("change", () => {
+        if (mode() === "default") {
+          applyDefaults();
+          quote().then(showBalances).catch((err) => log(explain(err)));
+        }
+      });
+    });
+    document.querySelectorAll("#sellToken,#buyToken,#slippageBps,#validFor,#maxAmount").forEach((input) => {
+      input.addEventListener("input", () => {
+        if (quoting) return;
+        document.querySelector("input[name=mode][value=custom]").checked = true;
+      });
+    });
+    document.querySelector("#sellAmount").addEventListener("input", () => {
+      if (quoting || mode() !== "default") return;
+      clearTimeout(document.querySelector("#sellAmount")._quoteTimer);
+      document.querySelector("#sellAmount")._quoteTimer = setTimeout(() => {
+        quote().catch((err) => {
+          quoteLine.textContent = explain(err);
+        });
+      }, 400);
+    });
+
+    applyDefaults();
+    quote().catch((err) => {
+      quoteLine.textContent = explain(err);
+    });
   </script>
 </body>
 </html>
